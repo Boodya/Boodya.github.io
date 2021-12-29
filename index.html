@@ -1,38 +1,94 @@
-<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-
-  <title>Cocos Creator | hello_world</title>
-
-  <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1, minimum-scale=1,maximum-scale=1"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="full-screen" content="yes"/>
-  <meta name="screen-orientation" content="portrait"/>
-  <meta name="x5-fullscreen" content="true"/>
-  <meta name="360-fullscreen" content="true"/>
-  
-  <meta name="renderer" content="webkit"/>
-  <meta name="force-rendering" content="webkit"/>
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
-  
-  <link rel="stylesheet" type="text/css" href="style-desktop.css"/>
 </head>
 <body>
-<h1 class="header">hello_world</h1>
-
-<div id="GameDiv"  style="width:1280px; height: 720px;">
-  <canvas id="GameCanvas" width="1280" height="720"></canvas>
-  <div id="splash">
-    <div class="progress-bar stripes">
-      <span style="width: 0%"></span>
+    <div id="container" style="width:100%; height:100%;">
     </div>
-  </div>
-</div>
+    <script>
+        var screen = document.getElementById("container");
+        screen.style.backgroundColor = "rgb(0,0,0)";
+        var currentChannel = 0;
+        var incrSide = 1;
 
-<p class="footer">Created with <a href="http://cocos.com/cocoscreator" title="Cocos Creator">Cocos Creator</a></p>
+        function setRandomStartColor() {
+            var channels = rgbToInt(screen.style.backgroundColor);
+            channels[0] = getRandomInt(255);
+            channels[1] = getRandomInt(255);
+            channels[2] = getRandomInt(255);
+            screen.style.backgroundColor = "rgb(" + channels[0] + "," + channels[1] + "," + channels[2] + ")";
+        }
 
-<script src="src/settings.js" charset="utf-8"></script>
-<script src="main.js" charset="utf-8"></script>
+        function rgbToInt(col) {
+            if (col.charAt(0) == 'r') {
+                col = col.replace('rgb(', '').replace(')', '').split(',');
+                let result = new Array();
+                col.forEach(element => {
+                    element = element.replace(' ', '');
+                    result.push(Math.floor(element));
+                });
+                return result;
+            }
+        }
+
+        function switchChannel() {
+            currentChannel++;
+            if (currentChannel == 3)
+                currentChannel = 0;
+        }
+
+        function incrementColor(col, incr) {
+            let incrValue = col[currentChannel] + (incr * incrSide);
+            let channel = currentChannel;
+
+            if (incrValue > 255 && incrSide == 1) {
+                switchChannel();
+                incrValue = 255;
+            } else if (incrValue <= 0 && incrSide == -1) {
+                switchChannel();
+                incrValue = 0;
+            }
+
+            let changeSidePoss = getRandomInt(100);
+            if (changeSidePoss < 5) {
+                incrSide *= -1;
+                switchChannel();
+            }
+
+            if (col[0] == 255 && col[1] == 255 && col[2] == 255) {
+                incrSide = -1;
+            }
+
+            if (col[0] == 0 && col[1] == 0 && col[2] == 0) {
+                incrSide = 1;
+            }
+
+            col[channel] = incrValue;
+            return col;
+        }
+
+        function getRandomInt(max) {
+            return Math.floor(Math.random() * max) + 1;
+        }
+
+        function changeColor(incr) {
+            if (incr == undefined) {
+                incr = getRandomInt(3);
+            }
+            let col = rgbToInt(screen.style.backgroundColor);
+            if (col) {
+                col = incrementColor(col, incr);
+                screen.style.backgroundColor = "rgb(" + col[0] + "," + col[1] + "," + col[2] + ")";
+                //console.log(screen.style.backgroundColor);
+            }
+        }
+        setRandomStartColor();
+        setInterval(changeColor, 50, 1);
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
 </body>
 </html>
