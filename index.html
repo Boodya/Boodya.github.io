@@ -1,95 +1,1637 @@
-<html>
+<!DOCTYPE html>
+<html lang="ru">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sol // Event Horizon</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
+  </style>
 </head>
 <body>
-    <div id="container" style="width:100%; height:100%;">
-    </div>
-    <a href="singularity.html" style="position:fixed;right:14px;bottom:10px;z-index:10;color:rgba(255,255,255,.35);font:11px/1.4 sans-serif;text-decoration:none;">event horizon &rarr;</a>
-    <script>
-        var screen = document.getElementById("container");
-        screen.style.backgroundColor = "rgb(0,0,0)";
-        var currentChannel = 0;
-        var incrSide = 1;
+  <script>
+(() => {
+  window.__solSingularity?.();
+  window.__terraAurora?.();
+  window.__cosmicShow?.();
 
-        function setRandomStartColor() {
-            var channels = rgbToInt(screen.style.backgroundColor);
-            channels[0] = getRandomInt(255);
-            channels[1] = getRandomInt(255);
-            channels[2] = getRandomInt(255);
-            screen.style.backgroundColor = "rgb(" + channels[0] + "," + channels[1] + "," + channels[2] + ")";
+  const canvas = document.createElement("canvas");
+  const hud = document.createElement("div");
+
+  Object.assign(canvas.style, {
+    position: "fixed",
+    inset: "0",
+    width: "100vw",
+    height: "100vh",
+    zIndex: "2147483646",
+    background: "#000",
+    cursor: "crosshair",
+    touchAction: "none"
+  });
+
+  Object.assign(hud.style, {
+    position: "fixed",
+    left: "50%",
+    bottom: "22px",
+    transform: "translateX(-50%)",
+    zIndex: "2147483647",
+    color: "rgba(225,245,255,.82)",
+    font: "500 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    letterSpacing: "2.5px",
+    whiteSpace: "nowrap",
+    textAlign: "center",
+    pointerEvents: "none",
+    textShadow:
+      "0 0 8px rgba(80,220,255,.95), 0 0 25px rgba(130,70,255,.75)",
+    opacity: "0",
+    transition: "opacity 1.2s ease"
+  });
+
+  // Не используем innerHTML — Trusted Types не помешает
+  hud.textContent =
+    "SOL // EVENT HORIZON V2  •  CLICK: SUPERNOVA  •  SPACE: SPECTRUM  •  J: JETS";
+
+  document.documentElement.append(canvas, hud);
+
+  requestAnimationFrame(() => {
+    hud.style.opacity = "1";
+  });
+
+  const gl =
+    canvas.getContext("webgl", {
+      alpha: false,
+      antialias: false,
+      depth: false,
+      stencil: false,
+      premultipliedAlpha: false,
+      preserveDrawingBuffer: false,
+      powerPreference: "high-performance"
+    }) ||
+    canvas.getContext("experimental-webgl");
+
+  if (!gl) {
+    hud.textContent = "WEBGL IS NOT AVAILABLE";
+    setTimeout(() => {
+      canvas.remove();
+      hud.remove();
+    }, 3500);
+    return;
+  }
+
+  const vertexSource = `
+    attribute vec2 a_position;
+
+    void main() {
+      gl_Position = vec4(a_position, 0.0, 1.0);
+    }
+  `;
+
+  const fragmentSource = `
+    precision highp float;
+
+    uniform vec2 u_resolution;
+    uniform vec2 u_mouse;
+    uniform vec2 u_burst;
+
+    uniform float u_time;
+    uniform float u_burstAge;
+    uniform float u_power;
+    uniform float u_palette;
+    uniform float u_jets;
+
+    #define PI 3.141592653589793
+    #define TAU 6.283185307179586
+
+    float saturate(float x) {
+      return clamp(x, 0.0, 1.0);
+    }
+
+    float hash11(float p) {
+      p = fract(p * 0.1031);
+      p *= p + 33.33;
+      p *= p + p;
+      return fract(p);
+    }
+
+    float hash21(vec2 p) {
+      vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+
+    vec2 hash22(vec2 p) {
+      vec3 p3 = fract(
+        vec3(p.xyx) *
+        vec3(0.1031, 0.1030, 0.0973)
+      );
+
+      p3 += dot(p3, p3.yzx + 33.33);
+
+      return fract(
+        (p3.xx + p3.yz) * p3.zy
+      );
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+
+      f = f * f * (3.0 - 2.0 * f);
+
+      float a = hash21(i);
+      float b = hash21(i + vec2(1.0, 0.0));
+      float c = hash21(i + vec2(0.0, 1.0));
+      float d = hash21(i + vec2(1.0, 1.0));
+
+      return mix(
+        mix(a, b, f.x),
+        mix(c, d, f.x),
+        f.y
+      );
+    }
+
+    float fbm(vec2 p) {
+      float value = 0.0;
+      float amplitude = 0.52;
+
+      mat2 rotation = mat2(
+         0.80,  0.60,
+        -0.60,  0.80
+      );
+
+      for (int i = 0; i < 5; i++) {
+        value += noise(p) * amplitude;
+        p = rotation * p * 2.03 + 17.17;
+        amplitude *= 0.5;
+      }
+
+      return value;
+    }
+
+    mat2 rotate2D(float angle) {
+      float s = sin(angle);
+      float c = cos(angle);
+
+      return mat2(c, -s, s, c);
+    }
+
+    vec3 spectrum(float t) {
+      float mode = mod(u_palette, 6.0);
+
+      vec3 a = vec3(0.50);
+      vec3 b = vec3(0.50);
+      vec3 c = vec3(1.00);
+      vec3 d;
+
+      if (mode < 0.5) {
+        d = vec3(0.00, 0.18, 0.42);
+      } else if (mode < 1.5) {
+        d = vec3(0.96, 0.12, 0.02);
+      } else if (mode < 2.5) {
+        d = vec3(0.34, 0.06, 0.14);
+      } else if (mode < 3.5) {
+        d = vec3(0.62, 0.20, 0.85);
+      } else if (mode < 4.5) {
+        d = vec3(0.12, 0.72, 0.36);
+      } else {
+        d = vec3(0.82, 0.67, 0.18);
+      }
+
+      return a + b * cos(TAU * (c * t + d));
+    }
+
+    /*
+      Бесшовный полярный шум.
+
+      Вместо самого angle, который имеет скачок -PI / +PI,
+      используются sin(angle) и cos(angle). Поэтому левого
+      цветового шва больше нет.
+    */
+    float seamlessPolarNoise(
+      float angle,
+      float radius,
+      float angularScale,
+      float radialScale,
+      float phase
+    ) {
+      vec2 circle = vec2(cos(angle), sin(angle));
+
+      vec2 samplePosition =
+        circle * angularScale +
+        vec2(
+          radius * radialScale + phase,
+          -radius * radialScale + phase * 0.73
+        );
+
+      return fbm(samplePosition);
+    }
+
+    float starLayer(
+      vec2 p,
+      float scale,
+      float seed,
+      float threshold
+    ) {
+      vec2 grid = p * scale;
+      vec2 cell = floor(grid);
+      vec2 local = fract(grid) - 0.5;
+
+      vec2 offset =
+        (hash22(cell + seed) - 0.5) * 0.78;
+
+      vec2 delta = local - offset;
+      float distanceToStar = length(delta);
+
+      float randomValue =
+        hash21(cell + seed * 2.71);
+
+      float size = mix(
+        0.012,
+        0.075,
+        pow(hash21(cell + seed + 8.3), 7.0)
+      );
+
+      float star =
+        smoothstep(size, 0.0, distanceToStar) *
+        step(threshold, randomValue);
+
+      float twinkle =
+        0.58 +
+        0.42 *
+        sin(
+          u_time *
+          (1.0 + hash21(cell + seed + 3.0) * 3.5) +
+          randomValue * 40.0
+        );
+
+      float horizontal =
+        smoothstep(0.018, 0.0, abs(delta.y)) *
+        smoothstep(0.25, 0.0, abs(delta.x));
+
+      float vertical =
+        smoothstep(0.018, 0.0, abs(delta.x)) *
+        smoothstep(0.25, 0.0, abs(delta.y));
+
+      return star * twinkle +
+        (horizontal + vertical) * star * 0.24;
+    }
+
+    float meteor(
+      vec2 uv,
+      vec2 origin,
+      vec2 direction,
+      float phase
+    ) {
+      direction = normalize(direction);
+
+      vec2 normal = vec2(
+        -direction.y,
+        direction.x
+      );
+
+      float cycle = fract(u_time * 0.075 + phase);
+      float visible =
+        smoothstep(0.0, 0.08, cycle) *
+        smoothstep(1.0, 0.72, cycle);
+
+      vec2 head =
+        origin +
+        direction * mix(-1.7, 2.5, cycle);
+
+      vec2 delta = uv - head;
+
+      float along = dot(delta, direction);
+      float across = abs(dot(delta, normal));
+
+      float headGlow =
+        exp(-length(delta) * 90.0);
+
+      float trail =
+        exp(-across * 180.0) *
+        exp(along * 7.0) *
+        step(-0.75, along) *
+        step(along, 0.0);
+
+      return (headGlow * 1.8 + trail * 0.55) * visible;
+    }
+
+    vec3 gravitationalStars(
+      vec2 uv,
+      vec2 center,
+      float radius
+    ) {
+      vec2 relative = uv - center;
+      float safeRadius = max(radius, 0.06);
+
+      // Координаты звёзд физически искривляются около ядра
+      vec2 lensed =
+        uv +
+        normalize(relative + vec2(0.0001)) *
+        (0.035 / safeRadius) *
+        u_power;
+
+      lensed += vec2(
+        sin(u_time * 0.011),
+        cos(u_time * 0.009)
+      ) * 0.018;
+
+      float a = starLayer(lensed, 19.0, 4.1, 0.91);
+      float b = starLayer(
+        rotate2D(0.37) * lensed,
+        37.0,
+        17.7,
+        0.935
+      );
+      float c = starLayer(
+        rotate2D(-0.23) * lensed,
+        68.0,
+        31.9,
+        0.955
+      );
+
+      vec3 result =
+        vec3(0.45, 0.72, 1.00) * a * 0.85 +
+        vec3(1.00, 0.48, 0.80) * b * 0.52 +
+        vec3(0.78, 0.92, 1.00) * c * 0.34;
+
+      // Звёзды исчезают внутри горизонта
+      result *= smoothstep(0.13, 0.21, radius);
+
+      return result;
+    }
+
+    vec3 drawJets(
+      vec2 p,
+      float radius,
+      float time
+    ) {
+      if (u_jets < 0.5) {
+        return vec3(0.0);
+      }
+
+      /*
+        Ось джетов медленно прецессирует.
+        Поворачиваем пространство, чтобы лучи не были статичными.
+      */
+      float tilt =
+        0.10 * sin(time * 0.23) +
+        0.045 * sin(time * 0.61);
+
+      vec2 q = rotate2D(tilt) * p;
+
+      float axialDistance = abs(q.y);
+      float width =
+        0.014 +
+        axialDistance * 0.040;
+
+      float beam =
+        exp(-abs(q.x) / width * 3.8);
+
+      beam *=
+        smoothstep(0.12, 0.24, axialDistance) *
+        exp(-axialDistance * 0.92);
+
+      float jetNoise = fbm(
+        vec2(
+          q.x * 30.0,
+          q.y * 4.5 -
+          time * sign(q.y) * 2.0
+        )
+      );
+
+      float filaments =
+        pow(
+          saturate(
+            jetNoise * 1.45 -
+            0.32 +
+            sin(q.y * 44.0 - time * 5.0) * 0.10
+          ),
+          2.0
+        );
+
+      float innerBeam =
+        exp(-abs(q.x) * 115.0) *
+        smoothstep(0.12, 0.20, axialDistance) *
+        exp(-axialDistance * 0.65);
+
+      float knots =
+        pow(
+          max(
+            0.0,
+            sin(
+              axialDistance * 34.0 -
+              time * 5.0 +
+              jetNoise * 4.0
+            )
+          ),
+          10.0
+        );
+
+      knots *= beam;
+
+      vec3 cold =
+        vec3(0.12, 0.56, 1.30);
+
+      vec3 hot =
+        vec3(1.05, 0.35, 1.18);
+
+      vec3 jetColor =
+        mix(
+          cold,
+          hot,
+          0.5 +
+          0.5 * sin(q.y * 5.0 - time)
+        );
+
+      vec3 result =
+        jetColor *
+        beam *
+        (0.20 + filaments * 1.15);
+
+      result +=
+        vec3(0.72, 0.92, 1.35) *
+        innerBeam *
+        0.72;
+
+      result +=
+        spectrum(q.y * 0.12 - time * 0.06) *
+        knots *
+        0.45;
+
+      // Подсвеченное основание джетов
+      float base =
+        exp(-abs(q.x) * 45.0) *
+        exp(-abs(axialDistance - 0.18) * 18.0);
+
+      result +=
+        vec3(0.48, 0.74, 1.30) *
+        base *
+        0.48;
+
+      return result;
+    }
+
+    vec3 drawSupernova(
+      vec2 uv,
+      vec2 burstPosition,
+      float age
+    ) {
+      vec2 delta = uv - burstPosition;
+      float distanceToBurst = length(delta);
+      float burstAngle = atan(delta.y, delta.x);
+
+      float radius = age * 0.72;
+      float fade = exp(-age * 0.78);
+
+      float wave =
+        exp(
+          -abs(distanceToBurst - radius) *
+          mix(
+            100.0,
+            24.0,
+            min(age * 0.28, 1.0)
+          )
+        ) *
+        fade;
+
+      float secondWave =
+        exp(
+          -abs(distanceToBurst - radius * 0.74) *
+          48.0
+        ) *
+        fade *
+        0.45;
+
+      float flash =
+        exp(
+          -distanceToBurst *
+          (6.0 + age * 17.0)
+        ) *
+        exp(-age * 3.0);
+
+      /*
+        Процедурные обломки сверхновой.
+        Сектора целочисленные — значит разрыва по углу нет.
+      */
+      float rayPattern =
+        pow(
+          max(
+            0.0,
+            sin(
+              burstAngle * 17.0 +
+              seamlessPolarNoise(
+                burstAngle,
+                distanceToBurst,
+                3.2,
+                4.0,
+                age * 0.4
+              ) * 5.0
+            )
+          ),
+          19.0
+        );
+
+      float ejectaRadius =
+        age * (0.24 + rayPattern * 0.23);
+
+      float ejecta =
+        exp(
+          -abs(distanceToBurst - ejectaRadius) *
+          55.0
+        ) *
+        rayPattern *
+        exp(-age * 0.58);
+
+      float sparks = 0.0;
+
+      for (int i = 0; i < 18; i++) {
+        float fi = float(i);
+        float randomAngle =
+          hash11(fi * 13.71 + 4.0) * TAU;
+
+        float randomSpeed =
+          0.22 + hash11(fi * 7.19) * 0.72;
+
+        vec2 sparkPosition =
+          burstPosition +
+          vec2(
+            cos(randomAngle),
+            sin(randomAngle)
+          ) *
+          age *
+          randomSpeed;
+
+        float sparkDistance =
+          length(uv - sparkPosition);
+
+        float sparkLife =
+          exp(-age * (0.75 + hash11(fi) * 0.8));
+
+        sparks +=
+          exp(-sparkDistance * 150.0) *
+          sparkLife;
+      }
+
+      vec3 burstColor =
+        spectrum(
+          distanceToBurst * 0.65 -
+          age * 0.12 +
+          0.15
+        );
+
+      vec3 result =
+        burstColor *
+        (wave * 2.5 + secondWave + ejecta * 1.4);
+
+      result +=
+        vec3(1.3, 1.1, 1.7) *
+        flash *
+        2.7;
+
+      result +=
+        vec3(0.45, 0.78, 1.4) *
+        sparks *
+        1.8;
+
+      return result;
+    }
+
+    void main() {
+      vec2 resolution = u_resolution;
+      vec2 frag = gl_FragCoord.xy;
+
+      vec2 uv =
+        (2.0 * frag - resolution) /
+        min(resolution.x, resolution.y);
+
+      vec2 mouse =
+        (2.0 * u_mouse * resolution - resolution) /
+        min(resolution.x, resolution.y);
+
+      vec2 burstPosition =
+        (2.0 * u_burst * resolution - resolution) /
+        min(resolution.x, resolution.y);
+
+      float time = u_time;
+
+      vec2 center =
+        mouse * 0.19 +
+        vec2(
+          sin(time * 0.31),
+          cos(time * 0.27)
+        ) * 0.035;
+
+      vec2 originalUV = uv;
+      vec2 relative = uv - center;
+
+      float radius = length(relative);
+      float safeRadius = max(radius, 0.035);
+      float angle = atan(relative.y, relative.x);
+
+      vec2 circularDirection =
+        vec2(cos(angle), sin(angle));
+
+      /*
+        Гравитационное искривление.
+      */
+      float lens =
+        u_power *
+        (
+          0.064 / safeRadius +
+          0.018 /
+          (safeRadius * safeRadius + 0.02)
+        );
+
+      float warpedAngle =
+        angle +
+        lens +
+        sin(time * 0.4) * 0.024;
+
+      float compressedRadius =
+        radius -
+        0.025 /
+        (radius + 0.09) *
+        u_power;
+
+      vec2 warped =
+        vec2(
+          cos(warpedAngle),
+          sin(warpedAngle)
+        ) *
+        compressedRadius;
+
+      vec3 color =
+        vec3(0.0012, 0.0018, 0.008);
+
+      /*
+        Глубокая туманность заднего плана.
+      */
+      float backgroundNebula = fbm(
+        originalUV * 1.22 +
+        vec2(
+          time * 0.018,
+          -time * 0.011
+        )
+      );
+
+      float cloud =
+        smoothstep(
+          0.40,
+          0.94,
+          backgroundNebula
+        );
+
+      color +=
+        spectrum(
+          backgroundNebula * 0.62 + 0.13
+        ) *
+        cloud *
+        0.062;
+
+      /*
+        Гравитационно линзированные звёзды.
+      */
+      color +=
+        gravitationalStars(
+          originalUV,
+          center,
+          radius
+        );
+
+      /*
+        Релятивистские джеты рисуем позади диска.
+      */
+      color +=
+        drawJets(
+          relative,
+          radius,
+          time
+        );
+
+      /*
+        Объёмные слои туманности.
+      */
+      vec3 volume = vec3(0.0);
+
+      for (int i = 0; i < 9; i++) {
+        float fi = float(i);
+        float depth =
+          fract(fi / 9.0 + time * 0.026);
+
+        float scale =
+          mix(0.72, 5.8, depth);
+
+        vec2 q = warped * scale;
+
+        q =
+          rotate2D(
+            time * (0.055 + fi * 0.006) +
+            fi * 0.71 +
+            0.22 / safeRadius
+          ) *
+          q;
+
+        q.x +=
+          sin(
+            q.y * 1.8 +
+            time * 0.54 +
+            fi
+          ) *
+          0.18;
+
+        q.y +=
+          cos(
+            q.x * 1.4 -
+            time * 0.43 +
+            fi
+          ) *
+          0.14;
+
+        float n = fbm(
+          q * 1.18 +
+          vec2(fi * 11.3, -fi * 7.7)
+        );
+
+        float ridge =
+          1.0 - abs(n * 2.0 - 1.0);
+
+        ridge =
+          pow(max(ridge, 0.0), 5.0);
+
+        float filament =
+          smoothstep(
+            0.34,
+            0.94,
+            ridge +
+            sin(
+              angle * 6.0 -
+              time +
+              fi
+            ) *
+            0.08
+          );
+
+        float depthFade =
+          smoothstep(0.0, 0.17, depth) *
+          smoothstep(1.0, 0.72, depth);
+
+        float radialFade =
+          exp(
+            -abs(
+              radius -
+              (0.25 + depth * 0.88)
+            ) *
+            1.35
+          );
+
+        vec3 layerColor =
+          spectrum(
+            n * 0.68 +
+            fi * 0.103 +
+            time * 0.035 +
+            angle / TAU
+          );
+
+        volume +=
+          layerColor *
+          filament *
+          depthFade *
+          radialFade *
+          (0.12 + 0.19 / (1.0 + depth));
+      }
+
+      color += volume;
+
+      /*
+        Спиральные рукава.
+
+        spiralNoise теперь использует бесшовные координаты.
+        Именно здесь раньше мог появляться левый цветовой шов.
+      */
+      float spiralCoordinate =
+        angle * 4.0 -
+        log(radius + 0.055) * 12.0 -
+        time * 2.0;
+
+      float spiral =
+        pow(
+          0.5 +
+          0.5 *
+          sin(spiralCoordinate),
+          12.0
+        );
+
+      float spiralNoise =
+        seamlessPolarNoise(
+          angle,
+          log(radius + 0.08),
+          2.7,
+          2.5,
+          time * 0.04
+        );
+
+      spiral *=
+        smoothstep(0.10, 0.25, radius);
+
+      spiral *=
+        exp(-radius * 1.35);
+
+      spiral *=
+        0.38 + spiralNoise * 0.8;
+
+      color +=
+        spectrum(
+          angle / TAU +
+          time * 0.08 +
+          spiralNoise * 0.25
+        ) *
+        spiral *
+        1.12;
+
+      /*
+        Аккреционный диск — тоже полностью бесшовный.
+      */
+      float diskRadius = 0.255;
+      float diskDistance =
+        abs(radius - diskRadius);
+
+      float disk =
+        exp(-diskDistance * 72.0) +
+        exp(-diskDistance * 19.0) * 0.26;
+
+      float diskTexture =
+        0.42 +
+        0.58 *
+        seamlessPolarNoise(
+          angle - time * 0.38,
+          radius,
+          7.5,
+          19.0,
+          time * 0.08
+        );
+
+      float doppler =
+        0.68 +
+        0.58 *
+        dot(
+          circularDirection,
+          normalize(vec2(1.0, 0.24))
+        );
+
+      vec3 diskColor =
+        mix(
+          vec3(0.18, 0.60, 1.08),
+          vec3(1.15, 0.27, 0.08),
+          saturate(doppler)
+        );
+
+      diskColor +=
+        spectrum(
+          angle / TAU +
+          time * 0.07
+        ) *
+        0.43;
+
+      color +=
+        diskColor *
+        disk *
+        diskTexture *
+        (0.65 + max(doppler, 0.0));
+
+      /*
+        Плазменные горячие точки в диске.
+      */
+      for (int i = 0; i < 5; i++) {
+        float fi = float(i);
+
+        float hotspotAngle =
+          time *
+          (0.42 + fi * 0.055) +
+          fi * 1.91;
+
+        float hotspotRadius =
+          diskRadius +
+          sin(time * 0.7 + fi) * 0.018;
+
+        vec2 hotspotPosition =
+          vec2(
+            cos(hotspotAngle),
+            sin(hotspotAngle)
+          ) *
+          hotspotRadius;
+
+        float hotspotDistance =
+          length(relative - hotspotPosition);
+
+        float hotspot =
+          exp(-hotspotDistance * 95.0);
+
+        color +=
+          spectrum(fi * 0.17 + time * 0.06) *
+          hotspot *
+          0.72;
+      }
+
+      /*
+        Фотонная сфера с хроматическим расщеплением.
+      */
+      float photonBlue =
+        exp(-abs(radius - 0.158) * 170.0);
+
+      float photonWhite =
+        exp(-abs(radius - 0.163) * 205.0);
+
+      float photonRed =
+        exp(-abs(radius - 0.169) * 145.0);
+
+      color +=
+        vec3(0.10, 0.44, 1.35) *
+        photonBlue *
+        1.15;
+
+      color +=
+        vec3(1.25, 1.20, 1.12) *
+        photonWhite *
+        1.42;
+
+      color +=
+        vec3(1.30, 0.16, 0.10) *
+        photonRed *
+        0.58;
+
+      /*
+        Пульсирующая магнитная корона.
+      */
+      float coronaNoise =
+        seamlessPolarNoise(
+          angle,
+          radius,
+          4.5,
+          10.0,
+          time * 0.11
+        );
+
+      float corona =
+        exp(-abs(radius - 0.195) * 23.0) *
+        pow(coronaNoise, 3.0) *
+        (
+          0.72 +
+          0.28 * sin(time * 3.0)
+        );
+
+      color +=
+        spectrum(
+          angle / TAU +
+          time * 0.05
+        ) *
+        corona *
+        0.65;
+
+      /*
+        Горизонт событий.
+      */
+      float eventHorizon =
+        1.0 -
+        smoothstep(
+          0.105,
+          0.145,
+          radius
+        );
+
+      color *=
+        1.0 -
+        eventHorizon * 0.997;
+
+      float horizonEdge =
+        exp(
+          -abs(radius - 0.137) *
+          120.0
+        );
+
+      color +=
+        vec3(0.12, 0.36, 1.00) *
+        horizonEdge *
+        0.45;
+
+      /*
+        Сверхновая от клика.
+      */
+      color +=
+        drawSupernova(
+          originalUV,
+          burstPosition,
+          u_burstAge
+        );
+
+      /*
+        Несколько редких метеоров.
+      */
+      float meteorA = meteor(
+        originalUV,
+        vec2(-1.4, 0.85),
+        normalize(vec2(1.0, -0.29)),
+        0.08
+      );
+
+      float meteorB = meteor(
+        originalUV,
+        vec2(-1.5, -0.45),
+        normalize(vec2(1.0, 0.18)),
+        0.54
+      );
+
+      float meteorC = meteor(
+        originalUV,
+        vec2(1.35, 0.70),
+        normalize(vec2(-1.0, -0.38)),
+        0.81
+      );
+
+      color +=
+        vec3(0.55, 0.82, 1.35) *
+        meteorA;
+
+      color +=
+        vec3(1.30, 0.47, 0.20) *
+        meteorB;
+
+      color +=
+        vec3(0.86, 0.48, 1.30) *
+        meteorC;
+
+      /*
+        Виньетка.
+      */
+      vec2 screenUV =
+        frag / resolution;
+
+      float vignette =
+        screenUV.x *
+        screenUV.y *
+        (1.0 - screenUV.x) *
+        (1.0 - screenUV.y);
+
+      vignette =
+        pow(
+          saturate(vignette * 17.0),
+          0.18
+        );
+
+      color *= vignette;
+
+      /*
+        Плёночное зерно.
+      */
+      float grain = hash21(
+        frag +
+        fract(time) * 913.17
+      );
+
+      color +=
+        (grain - 0.5) *
+        0.022 *
+        (0.35 + length(color));
+
+      /*
+        Кинематографичный tone mapping.
+      */
+      color =
+        1.0 -
+        exp(-color * 1.18);
+
+      color =
+        pow(
+          max(color, 0.0),
+          vec3(0.88)
+        );
+
+      color =
+        color *
+        color *
+        (3.0 - 2.0 * color);
+
+      gl_FragColor =
+        vec4(color, 1.0);
+    }
+  `;
+
+  function compileShader(type, source) {
+    const shader = gl.createShader(type);
+
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      const message = gl.getShaderInfoLog(shader);
+      gl.deleteShader(shader);
+
+      throw new Error(
+        "Shader compilation error:\n" + message
+      );
+    }
+
+    return shader;
+  }
+
+  function createProgram(vertexCode, fragmentCode) {
+    const vertexShader = compileShader(
+      gl.VERTEX_SHADER,
+      vertexCode
+    );
+
+    const fragmentShader = compileShader(
+      gl.FRAGMENT_SHADER,
+      fragmentCode
+    );
+
+    const program = gl.createProgram();
+
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
+
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      const message = gl.getProgramInfoLog(program);
+      gl.deleteProgram(program);
+
+      throw new Error(
+        "Program linking error:\n" + message
+      );
+    }
+
+    return program;
+  }
+
+  let program;
+
+  try {
+    program = createProgram(
+      vertexSource,
+      fragmentSource
+    );
+  } catch (error) {
+    console.error(error);
+    hud.textContent =
+      "SHADER ERROR — DETAILS ARE IN THE CONSOLE";
+    return;
+  }
+
+  gl.useProgram(program);
+
+  const positionLocation =
+    gl.getAttribLocation(
+      program,
+      "a_position"
+    );
+
+  const uniforms = {
+    resolution: gl.getUniformLocation(
+      program,
+      "u_resolution"
+    ),
+
+    mouse: gl.getUniformLocation(
+      program,
+      "u_mouse"
+    ),
+
+    burst: gl.getUniformLocation(
+      program,
+      "u_burst"
+    ),
+
+    time: gl.getUniformLocation(
+      program,
+      "u_time"
+    ),
+
+    burstAge: gl.getUniformLocation(
+      program,
+      "u_burstAge"
+    ),
+
+    power: gl.getUniformLocation(
+      program,
+      "u_power"
+    ),
+
+    palette: gl.getUniformLocation(
+      program,
+      "u_palette"
+    ),
+
+    jets: gl.getUniformLocation(
+      program,
+      "u_jets"
+    )
+  };
+
+  const buffer = gl.createBuffer();
+
+  gl.bindBuffer(
+    gl.ARRAY_BUFFER,
+    buffer
+  );
+
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array([
+      -1, -1,
+       3, -1,
+      -1,  3
+    ]),
+    gl.STATIC_DRAW
+  );
+
+  gl.enableVertexAttribArray(
+    positionLocation
+  );
+
+  gl.vertexAttribPointer(
+    positionLocation,
+    2,
+    gl.FLOAT,
+    false,
+    0,
+    0
+  );
+
+  let width = innerWidth;
+  let height = innerHeight;
+  let dpr = 1;
+
+  let frameId = 0;
+  let stopped = false;
+  let paused = false;
+
+  let palette = 0;
+  let jetsEnabled = 1;
+  let gravityPower = 1;
+
+  let targetMouseX = 0.5;
+  let targetMouseY = 0.5;
+  let mouseX = 0.5;
+  let mouseY = 0.5;
+
+  let burstX = 0.5;
+  let burstY = 0.5;
+  let burstStarted =
+    performance.now() - 10000;
+
+  let startTime = performance.now();
+  let pausedAt = 0;
+  let accumulatedPause = 0;
+
+  const paletteNames = [
+    "QUANTUM CYAN",
+    "SOLAR INFERNO",
+    "EMERALD VOID",
+    "ROYAL NEBULA",
+    "CELESTIAL GOLD",
+    "DEEP ULTRAVIOLET"
+  ];
+
+  function resize() {
+    width = innerWidth;
+    height = innerHeight;
+
+    // Если тормозит, можно заменить 1.65 на 1.25
+    dpr = Math.min(
+      devicePixelRatio || 1,
+      1.65
+    );
+
+    canvas.width = Math.max(
+      1,
+      Math.floor(width * dpr)
+    );
+
+    canvas.height = Math.max(
+      1,
+      Math.floor(height * dpr)
+    );
+
+    gl.viewport(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+  }
+
+  function updatePointer(clientX, clientY) {
+    targetMouseX =
+      clientX / Math.max(width, 1);
+
+    targetMouseY =
+      1 -
+      clientY / Math.max(height, 1);
+  }
+
+  function triggerBurst(x, y) {
+    burstX = x;
+    burstY = y;
+    burstStarted = performance.now();
+
+    if (typeof canvas.animate === "function") {
+      canvas.animate(
+        [
+          { filter: "brightness(1)" },
+          { filter: "brightness(1.75)" },
+          { filter: "brightness(1)" }
+        ],
+        {
+          duration: 260,
+          easing: "ease-out"
         }
+      );
+    }
+  }
 
-        function rgbToInt(col) {
-            if (col.charAt(0) == 'r') {
-                col = col.replace('rgb(', '').replace(')', '').split(',');
-                let result = new Array();
-                col.forEach(element => {
-                    element = element.replace(' ', '');
-                    result.push(Math.floor(element));
-                });
-                return result;
-            }
-        }
+  function updateHud(message) {
+    hud.textContent = message;
+    hud.style.opacity = "1";
 
-        function switchChannel() {
-            currentChannel++;
-            if (currentChannel == 3)
-                currentChannel = 0;
-        }
+    clearTimeout(updateHud.timeout);
 
-        function incrementColor(col, incr) {
-            let incrValue = col[currentChannel] + (incr * incrSide);
-            let channel = currentChannel;
+    updateHud.timeout = setTimeout(() => {
+      if (!stopped) {
+        hud.style.opacity = "0.42";
+      }
+    }, 2800);
+  }
 
-            if (incrValue > 255 && incrSide == 1) {
-                switchChannel();
-                incrValue = 255;
-            } else if (incrValue <= 0 && incrSide == -1) {
-                switchChannel();
-                incrValue = 0;
-            }
+  function handlePointerMove(event) {
+    updatePointer(
+      event.clientX,
+      event.clientY
+    );
+  }
 
-            let changeSidePoss = getRandomInt(100);
-            if (changeSidePoss < 5) {
-                incrSide *= -1;
-                switchChannel();
-            }
+  function handlePointerDown(event) {
+    updatePointer(
+      event.clientX,
+      event.clientY
+    );
 
-            if (col[0] == 255 && col[1] == 255 && col[2] == 255) {
-                incrSide = -1;
-            }
+    triggerBurst(
+      targetMouseX,
+      targetMouseY
+    );
+  }
 
-            if (col[0] == 0 && col[1] == 0 && col[2] == 0) {
-                incrSide = 1;
-            }
+  function handleWheel(event) {
+    event.preventDefault();
 
-            col[channel] = incrValue;
-            return col;
-        }
+    gravityPower +=
+      event.deltaY < 0
+        ? 0.12
+        : -0.12;
 
-        function getRandomInt(max) {
-            return Math.floor(Math.random() * max) + 1;
-        }
+    gravityPower = Math.max(
+      0.45,
+      Math.min(2.2, gravityPower)
+    );
 
-        function changeColor(incr) {
-            if (incr == undefined) {
-                incr = getRandomInt(3);
-            }
-            let col = rgbToInt(screen.style.backgroundColor);
-            if (col) {
-                col = incrementColor(col, incr);
-                screen.style.backgroundColor = "rgb(" + col[0] + "," + col[1] + "," + col[2] + ")";
-                //console.log(screen.style.backgroundColor);
-            }
-        }
-        setRandomStartColor();
-        setInterval(changeColor, 50, 1);
-    </script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-        }
-    </style>
+    updateHud(
+      "GRAVITY " +
+      gravityPower.toFixed(2) +
+      "  •  WHEEL TO ADJUST"
+    );
+  }
+
+  function handleKeyDown(event) {
+    if (event.key === "Escape") {
+      stop();
+      return;
+    }
+
+    if (event.code === "Space") {
+      event.preventDefault();
+
+      palette =
+        (palette + 1) %
+        paletteNames.length;
+
+      triggerBurst(mouseX, mouseY);
+
+      updateHud(
+        "SPECTRUM // " +
+        paletteNames[palette]
+      );
+
+      return;
+    }
+
+    if (event.key.toLowerCase() === "j") {
+      jetsEnabled =
+        jetsEnabled > 0.5 ? 0 : 1;
+
+      updateHud(
+        jetsEnabled
+          ? "RELATIVISTIC JETS // ONLINE"
+          : "RELATIVISTIC JETS // OFFLINE"
+      );
+
+      return;
+    }
+
+    if (event.key.toLowerCase() === "p") {
+      paused = !paused;
+
+      if (paused) {
+        pausedAt = performance.now();
+
+        updateHud(
+          "TIME DILATION // PAUSED"
+        );
+      } else {
+        accumulatedPause +=
+          performance.now() - pausedAt;
+
+        updateHud(
+          "TIME DILATION // RELEASED"
+        );
+
+        frameId =
+          requestAnimationFrame(render);
+      }
+    }
+  }
+
+  function stop() {
+    if (stopped) return;
+
+    stopped = true;
+
+    cancelAnimationFrame(frameId);
+    clearTimeout(updateHud.timeout);
+
+    removeEventListener(
+      "resize",
+      resize
+    );
+
+    removeEventListener(
+      "pointermove",
+      handlePointerMove
+    );
+
+    removeEventListener(
+      "pointerdown",
+      handlePointerDown
+    );
+
+    removeEventListener(
+      "wheel",
+      handleWheel
+    );
+
+    removeEventListener(
+      "keydown",
+      handleKeyDown
+    );
+
+    gl.deleteBuffer(buffer);
+    gl.deleteProgram(program);
+
+    canvas.remove();
+    hud.remove();
+
+    delete window.__solSingularity;
+  }
+
+  window.__solSingularity = stop;
+
+  addEventListener(
+    "resize",
+    resize
+  );
+
+  addEventListener(
+    "pointermove",
+    handlePointerMove,
+    { passive: true }
+  );
+
+  addEventListener(
+    "pointerdown",
+    handlePointerDown,
+    { passive: true }
+  );
+
+  addEventListener(
+    "wheel",
+    handleWheel,
+    { passive: false }
+  );
+
+  addEventListener(
+    "keydown",
+    handleKeyDown
+  );
+
+  resize();
+
+  function render(now) {
+    if (stopped || paused) return;
+
+    const time =
+      (
+        now -
+        startTime -
+        accumulatedPause
+      ) / 1000;
+
+    const burstAge =
+      (
+        now -
+        burstStarted
+      ) / 1000;
+
+    mouseX +=
+      (targetMouseX - mouseX) *
+      0.055;
+
+    mouseY +=
+      (targetMouseY - mouseY) *
+      0.055;
+
+    gl.useProgram(program);
+
+    gl.uniform2f(
+      uniforms.resolution,
+      canvas.width,
+      canvas.height
+    );
+
+    gl.uniform2f(
+      uniforms.mouse,
+      mouseX,
+      mouseY
+    );
+
+    gl.uniform2f(
+      uniforms.burst,
+      burstX,
+      burstY
+    );
+
+    gl.uniform1f(
+      uniforms.time,
+      time
+    );
+
+    gl.uniform1f(
+      uniforms.burstAge,
+      burstAge
+    );
+
+    gl.uniform1f(
+      uniforms.power,
+      gravityPower
+    );
+
+    gl.uniform1f(
+      uniforms.palette,
+      palette
+    );
+
+    gl.uniform1f(
+      uniforms.jets,
+      jetsEnabled
+    );
+
+    gl.drawArrays(
+      gl.TRIANGLES,
+      0,
+      3
+    );
+
+    frameId =
+      requestAnimationFrame(render);
+  }
+
+  // Стартовая сверхновая
+  triggerBurst(0.5, 0.5);
+  frameId = requestAnimationFrame(render);
+
+  setTimeout(() => {
+    if (!stopped) {
+      hud.style.opacity = "0.42";
+    }
+  }, 6000);
+})();
+  </script>
 </body>
 </html>
